@@ -12,10 +12,10 @@
 #   env.img        — partition table / U-Boot environment (32K)
 #   update.img     — single-file Rockchip firmware package (all of the above)
 #
-# Prerequisites (must be on PATH or in LUCKFOX_TOOLS_DIR):
-#   - afptool, rkImageMaker  (from luckfox-pico/tools/linux/Linux_Pack_Firmware/)
-#   - upgrade_tool            (from luckfox-pico/tools/linux/Linux_Upgrade_Tool/)
-#   The U-Boot make.sh script drives loaderimage (from rkbin/tools/) internally.
+# Prerequisites:
+#   - afptool, rkImageMaker  (vendored in board/luckfox/pico-86panel-w/tools/)
+#   - boot_merger, resource_tool (installed by rockchip-rkbin package into HOST_DIR)
+#   - rkbin blobs and INI files (installed by rockchip-rkbin into STAGING_DIR/rkbin/)
 #
 # Usage: called automatically by buildroot — do not run directly.
 #   BINARIES_DIR  set by buildroot to <output>/images/
@@ -27,23 +27,21 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 # BR2_EXTERNAL_LUCKFOX_86PANEL_PATH is set by Buildroot to the absolute path of
 # buildroot-external/.  Fall back to relative computation for manual runs.
 EXTERNAL_DIR="${BR2_EXTERNAL_LUCKFOX_86PANEL_PATH:-$(cd "${SCRIPT_DIR}/../../.." && pwd)}"
-# luckfox-pico is a sibling of the project root (one level above buildroot-external/)
-LUCKFOX_DIR="$(cd "${EXTERNAL_DIR}/../../luckfox-pico" && pwd)"
 
 BINARIES="${BINARIES_DIR}"
-UBOOT_DIR="${LUCKFOX_DIR}/sysdrv/source/uboot/u-boot"
-RKBIN_DIR="${LUCKFOX_DIR}/sysdrv/source/uboot/rkbin"
-KERNEL_DIR="${LUCKFOX_DIR}/sysdrv/source/kernel"
-TOOLS_DIR="${LUCKFOX_DIR}/tools/linux"
-PACK_TOOLS="${TOOLS_DIR}/Linux_Pack_Firmware"
+RKBIN_DIR="${STAGING_DIR}/rkbin"
+PACK_TOOLS="${EXTERNAL_DIR}/board/luckfox/pico-86panel-w/tools"
 
 # Partition layout — must match the board config
 PARTITION_CMD="32K(env),512K@32K(idblock),256K(uboot),32M(boot),512M(oem),256M(userdata),6G(rootfs)"
-BOOTARGS_CMA="cma=1M"
+# CMA must be large enough for the 720x720 LCD framebuffer (~2 MB/buffer).
+# coherent_pool=256K overrides any stale DTS coherent_pool=0 (kernel uses
+# last value); 256K is the kernel default and sufficient for atomic DMA.
+BOOTARGS_CMA="coherent_pool=256K cma=16M"
 
 echo "=== Luckfox 86Panel W post-image ==="
 echo "    BINARIES_DIR : ${BINARIES}"
-echo "    LUCKFOX_DIR  : ${LUCKFOX_DIR}"
+echo "    RKBIN_DIR    : ${RKBIN_DIR}"
 
 # ── Step 1: Pack Rockchip U-Boot loader images ────────────────────────────────
 #
@@ -54,7 +52,10 @@ echo "    LUCKFOX_DIR  : ${LUCKFOX_DIR}"
 # from the already-compiled U-Boot binaries.
 #
 echo "--- Packing Rockchip U-Boot loader images ---"
-UBOOT_BUILD_DIR="${BUILD_DIR}/uboot-custom"
+# Buildroot names the build dir after the version/tag (e.g. uboot-2017.09-sdk-...)
+# so we resolve it with a glob rather than hardcoding the name.
+UBOOT_BUILD_DIR="$(echo "${BUILD_DIR}"/uboot-*/ | awk '{print $1}')"
+UBOOT_BUILD_DIR="${UBOOT_BUILD_DIR%/}"
 INI_FILE="${RKBIN_DIR}/RKBOOT/RV1106MINIALL_EMMC_TB.ini"
 
 # Repack the uboot.img FIT image from the freshly compiled U-Boot binaries.
@@ -99,7 +100,7 @@ INI_FILE="${RKBIN_DIR}/RKBOOT/RV1106MINIALL_EMMC_TB.ini"
 # Pack SPL + DDR blobs into idblock.img / download.bin via scripts/spl.sh
 (
   cd "${RKBIN_DIR}"
-  "${UBOOT_DIR}/scripts/spl.sh" \
+  "${UBOOT_BUILD_DIR}/scripts/spl.sh" \
     --ini "${INI_FILE}" \
     --spl "${UBOOT_BUILD_DIR}/spl/u-boot-spl.bin"
 )
@@ -123,22 +124,31 @@ cp -v "${UBOOT_BUILD_DIR}/uboot.img" "${BINARIES}/uboot.img"
 # build directory from the Buildroot kernel build — no recompilation needed.
 #
 echo "--- Building boot.img ---"
-LINUX_BUILD_DIR="${BUILD_DIR}/linux-custom"
+LINUX_BUILD_DIR="$(echo "${BUILD_DIR}"/linux-[0-9]*/ | awk '{print $1}')"
+LINUX_BUILD_DIR="${LINUX_BUILD_DIR%/}"
 # The host-uboot-tools mkimage (2025.x) is compiled without a valid dtc path
 # (MKIMAGE_DTC=""), so it fails on ITS files containing /incbin/() directives.
 # The mkimage built from our own U-Boot source (2017.09) has dtc support and
 # produces the correct Rockchip -E external-data FIT format.
-UBOOT_MKIMAGE="${BUILD_DIR}/uboot-custom/tools/mkimage"
+UBOOT_MKIMAGE="${UBOOT_BUILD_DIR}/tools/mkimage"
 (
   # mkimg uses relative paths (scripts/resource_tool, out/) so it must run
   # from the kernel build directory.
   cd "${LINUX_BUILD_DIR}"
-  srctree="${KERNEL_DIR}" \
+
+  # mkimg calls scripts/resource_tool which may not be in the kernel tree;
+  # ensure the one from rkbin is available.
+  if [ ! -x scripts/resource_tool ]; then
+    cp "${HOST_DIR}/bin/resource_tool" scripts/resource_tool
+    chmod +x scripts/resource_tool
+  fi
+
+  srctree="${LINUX_BUILD_DIR}" \
   objtree="${LINUX_BUILD_DIR}" \
   ARCH=arm \
-  BOOT_ITS="${KERNEL_DIR}/boot.its" \
+  BOOT_ITS="${LINUX_BUILD_DIR}/boot.its" \
   MKIMAGE="${UBOOT_MKIMAGE}" \
-    "${KERNEL_DIR}/scripts/mkimg" \
+    "${LINUX_BUILD_DIR}/scripts/mkimg" \
       --dtb "rv1106g-luckfox-pico-86panel-w.dtb"
 )
 cp -v "${LINUX_BUILD_DIR}/boot.img" "${BINARIES}/boot.img"
@@ -150,7 +160,7 @@ cp -v "${LINUX_BUILD_DIR}/boot.img" "${BINARIES}/boot.img"
 #
 echo "--- Generating env.img ---"
 ENV_STR="blkdevparts=mmcblk0:${PARTITION_CMD}"
-ENV_STR+=" earlycon=uart8250,mmio32,0xff4e0000,115200 console=ttyFIQ0,115200n8"
+ENV_STR+=" earlycon=uart8250,mmio32,0xff4c0000,1500000 console=ttyFIQ0,1500000n8"
 ENV_STR+=" rootwait root=/dev/mmcblk0p7 rw ${BOOTARGS_CMA}"
 
 # mkenvimage is part of u-boot-tools (host package)
