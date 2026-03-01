@@ -1,1 +1,1 @@
-# No custom Kconfig options yet
+source "$BR2_EXTERNAL_LUCKFOX_86PANEL_PATH/package/calaos-remote-ui/Config.in"
