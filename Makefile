@@ -22,17 +22,14 @@ CONTAINER_COMMAND := ${CONTAINER_ENGINE} run -it --rm \
 		--volume="$(CURDIR):$(CURDIR)" \
 		-v calaos-builder-build:$(CURDIR)/build \
 		--workdir="$(CURDIR)" \
+		$(if $(CALAOS_SRC_PATH),--volume="$(CALAOS_SRC_PATH):$(CALAOS_SRC_PATH)",) \
 		$(CONTAINER_IMAGE_NAME):$(CONTAINER_TAG)
 
-BUILDROOT_VERSION ?= 2026.02-rc2
+BUILDROOT_VERSION ?= 2025.02.x
 
 #MACHINE ?= network_player_v2
 #MACHINE ?= raspberrypi_zero2w
 MACHINE ?= luckfox_pico_86panel_w
-
-# Absolute path to the luckfox-pico repo (sibling of this project).
-# Override with: make LUCKFOX_PICO_DIR=/your/path menuconfig
-LUCKFOX_PICO_DIR ?= $(abspath $(CURDIR)/../luckfox-pico)
 
 CONFIG_NAME=${MACHINE}_defconfig
 CONFIG_FILE?=buildroot-external/configs/${CONFIG_NAME}
@@ -40,6 +37,13 @@ OUTPUT_DIR?=../output/${MACHINE}
 OUTPUT_ABS_DIR=$(CURDIR)/build/output/$(MACHINE)
 EXTERNAL_REPOSITORIES?=../../buildroot-external
 BUILD_VERSION ?=  $(shell git describe --tags --dirty --always 2>/dev/null || echo "unknown")
+
+# Optional: override calaos-remote-ui source with a local path
+CALAOS_SRC_PATH ?=
+BR2_OVERRIDE_FILE ?=
+ifneq ($(CALAOS_SRC_PATH),)
+    BR2_OVERRIDE_FILE = $(CURDIR)/build/local.mk
+endif
 
 ifeq ($(CONTAINER), 1)
 	DEPS = container-image
@@ -51,38 +55,38 @@ endif
 
 ### DEFAULT TARGET ###
 
-build: $(DEPS) br-downloads config ## Build target.
+# Generate local.mk with source override when CALAOS_SRC_PATH is set
+build/local.mk:
+ifneq ($(CALAOS_SRC_PATH),)
+	mkdir -p build
+	echo "CALAOS_REMOTE_UI_OVERRIDE_SRCDIR = $(CALAOS_SRC_PATH)" > build/local.mk
+endif
+.PHONY: build/local.mk
+
+BR2_EXTRA_OPTS = $(if $(BR2_OVERRIDE_FILE),BR2_PACKAGE_OVERRIDE_FILE=$(BR2_OVERRIDE_FILE),)
+
+build: $(DEPS) br-downloads $(if $(CALAOS_SRC_PATH),build/local.mk,) config ## Build target.
 	@echo ">>> Build target [${MACHINE}]"
-	$(PREFIX) make -C build/buildroot-${BUILDROOT_VERSION} BR2_EXTERNAL=$(EXTERNAL_REPOSITORIES) O=$(OUTPUT_DIR)
+	$(PREFIX) make -C build/buildroot-${BUILDROOT_VERSION} BR2_EXTERNAL=$(EXTERNAL_REPOSITORIES) O=$(OUTPUT_DIR) $(BR2_EXTRA_OPTS)
 .PHONY: build
 
-sdk: build ## Build target. 
+sdk: build ## Build target.
 	@echo ">>> Build SDK [${MACHINE}]"
-	$(PREFIX) make -C build/buildroot-${BUILDROOT_VERSION} BR2_EXTERNAL=$(EXTERNAL_REPOSITORIES) O=$(OUTPUT_DIR) BR2_SDK_PREFIX=sdk-${MACHINE}-${BUILD_VERSION} sdk
+	$(PREFIX) make -C build/buildroot-${BUILDROOT_VERSION} BR2_EXTERNAL=$(EXTERNAL_REPOSITORIES) O=$(OUTPUT_DIR) BR2_SDK_PREFIX=sdk-${MACHINE}-${BUILD_VERSION} sdk $(BR2_EXTRA_OPTS)
 .PHONY: build
 
-build-%: $(DEPS) br-downloads ## Build specific package
+build-%: $(DEPS) br-downloads $(if $(CALAOS_SRC_PATH),build/local.mk,) ## Build specific package
 	@echo ">>> Build package [$*] for target [${MACHINE}]"
-	$(PREFIX) make -C build/buildroot-${BUILDROOT_VERSION} BR2_EXTERNAL=$(EXTERNAL_REPOSITORIES) O=$(OUTPUT_DIR) $*
+	$(PREFIX) make -C build/buildroot-${BUILDROOT_VERSION} BR2_EXTERNAL=$(EXTERNAL_REPOSITORIES) O=$(OUTPUT_DIR) $* $(BR2_EXTRA_OPTS)
 .PHONY: build-%
 
-config: $(DEPS)
-	mkdir -p $(OUTPUT_ABS_DIR)
-	printf 'LINUX_OVERRIDE_SRCDIR = %s\nUBOOT_OVERRIDE_SRCDIR = %s\n' \
-		"$(LUCKFOX_PICO_DIR)/sysdrv/source/kernel" \
-		"$(LUCKFOX_PICO_DIR)/sysdrv/source/uboot/u-boot" \
-		> $(OUTPUT_ABS_DIR)/local.mk
-	$(PREFIX) make -C build/buildroot-${BUILDROOT_VERSION} O=$(OUTPUT_DIR) BR2_EXTERNAL=$(EXTERNAL_REPOSITORIES) $(CONFIG_NAME)
+config: $(DEPS) $(if $(CALAOS_SRC_PATH),build/local.mk,)
+	$(PREFIX) make -C build/buildroot-${BUILDROOT_VERSION} O=$(OUTPUT_DIR) BR2_EXTERNAL=$(EXTERNAL_REPOSITORIES) $(CONFIG_NAME) $(BR2_EXTRA_OPTS)
 .PHONY: config
 
 menuconfig: $(DEPS)
-	mkdir -p $(OUTPUT_ABS_DIR)
-	printf 'LINUX_OVERRIDE_SRCDIR = %s\nUBOOT_OVERRIDE_SRCDIR = %s\n' \
-		"$(LUCKFOX_PICO_DIR)/sysdrv/source/kernel" \
-		"$(LUCKFOX_PICO_DIR)/sysdrv/source/uboot/u-boot" \
-		> $(OUTPUT_ABS_DIR)/local.mk
-	$(PREFIX) make -C build/buildroot-${BUILDROOT_VERSION} O=$(OUTPUT_DIR) BR2_EXTERNAL=$(EXTERNAL_REPOSITORIES) $(CONFIG_NAME)
-	$(PREFIX) make -C build/buildroot-${BUILDROOT_VERSION} O=$(OUTPUT_DIR) BR2_EXTERNAL=$(EXTERNAL_REPOSITORIES) menuconfig
+	$(PREFIX) make -C build/buildroot-${BUILDROOT_VERSION} O=$(OUTPUT_DIR) BR2_EXTERNAL=$(EXTERNAL_REPOSITORIES) $(CONFIG_NAME) $(BR2_EXTRA_OPTS)
+	$(PREFIX) make -C build/buildroot-${BUILDROOT_VERSION} O=$(OUTPUT_DIR) BR2_EXTERNAL=$(EXTERNAL_REPOSITORIES) menuconfig $(BR2_EXTRA_OPTS)
 	$(PREFIX) make -C build/buildroot-${BUILDROOT_VERSION} O=$(OUTPUT_DIR) BR2_EXTERNAL=$(EXTERNAL_REPOSITORIES) savedefconfig DEFCONFIG=$(abspath $(CONFIG_FILE))
 .PHONY: menuconfig
 

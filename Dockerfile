@@ -9,7 +9,7 @@ RUN apt update \
         cpio g++ gcc git gzip locales libncurses5-dev libdevmapper-dev \
         libsystemd-dev make mercurial whois patch perl python3 rsync sed \
         tar vim unzip wget bison flex libssl-dev libfdt-dev curl file swig\
-        u-boot-tools python3-setuptools python3-dev \
+        u-boot-tools python3-setuptools python3-dev python3-png python3-lz4 \
     && rm -rf /var/lib/apt-lists/*
 
 
@@ -35,5 +35,4 @@ RUN sh -c "$(wget -O- https://github.com/deluan/zsh-in-docker/releases/download/
 
 RUN echo 'command -v lsd > /dev/null && alias ls="lsd --date=relative --group-dirs=first --size=short"' >> ${HOME}/.zshrc
 RUN echo "command -v lsd > /dev/null && alias tree='lsd --tree'" >> ${HOME}/.zshrc
-#RUN echo "command -v lsd > /dev/null && alias ls='lsd --group-dirs first'" >> ${HOME}/.zshrc
 RUN echo "command -v bat > /dev/null && alias cat='bat --pager=never'" >> ${HOME}/.zshrc
