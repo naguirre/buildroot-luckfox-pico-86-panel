@@ -1,0 +1,30 @@
+#!/bin/sh
+#
+# Start calaos-remote-ui
+#
+
+DAEMON=/usr/bin/calaos-remote-ui
+PIDFILE=/var/run/calaos-remote-ui.pid
+
+case "$1" in
+  start)
+	printf "Starting calaos-remote-ui: "
+	start-stop-daemon -S -q -m -p $PIDFILE --exec $DAEMON -- &
+	echo "OK"
+	;;
+  stop)
+	printf "Stopping calaos-remote-ui: "
+	start-stop-daemon -K -q -p $PIDFILE
+	rm -f $PIDFILE
+	echo "OK"
+	;;
+  restart|reload)
+	"$0" stop
+	"$0" start
+	;;
+  *)
+	echo "Usage: $0 {start|stop|restart}"
+	exit 1
+esac
+
+exit 0

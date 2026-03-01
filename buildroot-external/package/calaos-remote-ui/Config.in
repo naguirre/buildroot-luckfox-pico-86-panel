@@ -1,0 +1,9 @@
+config BR2_PACKAGE_CALAOS_REMOTE_UI
+	bool "calaos-remote-ui"
+	depends on BR2_INSTALL_LIBSTDCPP
+	depends on BR2_TOOLCHAIN_HAS_THREADS
+	select BR2_PACKAGE_MBEDTLS
+	select BR2_PACKAGE_LIBDRM
+	select BR2_PACKAGE_LIBEVDEV
+	help
+	  Calaos Remote UI — LVGL smart-home control panel for Luckfox Pico 86Panel.
