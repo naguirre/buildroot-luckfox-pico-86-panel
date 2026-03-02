@@ -20,7 +20,6 @@ CONTAINER_IMAGE_NAME ?= calaos_builder_image
 CONTAINER_TAG ?= latest
 CONTAINER_COMMAND := ${CONTAINER_ENGINE} run -it --rm \
 		--volume="$(CURDIR):$(CURDIR)" \
-		-v calaos-builder-build:$(CURDIR)/build \
 		--workdir="$(CURDIR)" \
 		$(if $(CALAOS_SRC_PATH),--volume="$(CALAOS_SRC_PATH):$(CALAOS_SRC_PATH)",) \
 		$(CONTAINER_IMAGE_NAME):$(CONTAINER_TAG)
@@ -59,7 +58,7 @@ endif
 build/local.mk:
 ifneq ($(CALAOS_SRC_PATH),)
 	mkdir -p build
-	echo "CALAOS_REMOTE_UI_OVERRIDE_SRCDIR = $(CALAOS_SRC_PATH)" > build/local.mk
+	echo "CALAOS_REMOTE_UI_OVERRIDE_SRCDIR=$(CALAOS_SRC_PATH)" > build/local.mk
 endif
 .PHONY: build/local.mk
 
@@ -108,9 +107,9 @@ distrib-clean: ## Remove the distribution directory
 ### DOWNLOAD Buildroot ###
 build/.stamp-br-downloads:
 	@echo ">>> Download buildroot source code"
-	$(PREFIX) mkdir -p build
-	git clone https://gitlab.com/buildroot.org/buildroot.git build/buildroot-${BUILDROOT_VERSION}
-	git -C build/buildroot-${BUILDROOT_VERSION} checkout ${BUILDROOT_VERSION}
+	mkdir -p build
+	$(PREFIX) git clone https://gitlab.com/buildroot.org/buildroot.git build/buildroot-${BUILDROOT_VERSION}
+	$(PREFIX) git -C build/buildroot-${BUILDROOT_VERSION} checkout ${BUILDROOT_VERSION}
 	### $(PREFIX) curl -s https://buildroot.org/downloads/buildroot-${BUILDROOT_VERSION}.tar.gz | tar xz -C build/
 	touch build/.stamp-br-downloads
 

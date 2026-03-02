@@ -14,6 +14,11 @@ CALAOS_REMOTE_UI_LICENSE_FILES = LICENSE
 
 CALAOS_REMOTE_UI_DEPENDENCIES = mbedtls libdrm libevdev host-python3
 
+# Exclude the luckfox buildroot submodule from rsync to avoid circular sync
+# and pulling in the entire (huge) buildroot build output
+CALAOS_REMOTE_UI_OVERRIDE_SRCDIR_RSYNC_EXCLUSIONS = \
+	--exclude=boards/luckfox-86-panel/luckfox-pico-86-panel
+
 CALAOS_REMOTE_UI_CONF_OPTS = \
 	-DBUILD_LINUX=ON \
 	-DBOARD=luckfox-86-panel \
