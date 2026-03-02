@@ -1,3 +1,5 @@
+include $(sort $(wildcard $(BR2_EXTERNAL_LUCKFOX_86PANEL_PATH)/package/*/*.mk))
+
 UBOOT_MAKE_OPTS += KCFLAGS="-Wno-error=address -Wno-error=maybe-uninitialized -Wno-error=enum-int-mismatch"
 LINUX_CFLAGS += -Wno-dangling-pointer
 

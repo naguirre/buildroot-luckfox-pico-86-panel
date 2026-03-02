@@ -124,7 +124,7 @@ cp -v "${UBOOT_BUILD_DIR}/uboot.img" "${BINARIES}/uboot.img"
 # build directory from the Buildroot kernel build — no recompilation needed.
 #
 echo "--- Building boot.img ---"
-LINUX_BUILD_DIR="$(echo "${BUILD_DIR}"/linux-[0-9]*/ | awk '{print $1}')"
+LINUX_BUILD_DIR="$(echo "${BUILD_DIR}"/linux-*/ | tr ' ' '\n' | grep -v 'host-\|util-' | head -1)"
 LINUX_BUILD_DIR="${LINUX_BUILD_DIR%/}"
 # The host-uboot-tools mkimage (2025.x) is compiled without a valid dtc path
 # (MKIMAGE_DTC=""), so it fails on ITS files containing /incbin/() directives.

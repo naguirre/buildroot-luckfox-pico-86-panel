@@ -22,7 +22,8 @@ CALAOS_REMOTE_UI_OVERRIDE_SRCDIR_RSYNC_EXCLUSIONS = \
 CALAOS_REMOTE_UI_CONF_OPTS = \
 	-DBUILD_LINUX=ON \
 	-DBOARD=luckfox-86-panel \
-	-DCMAKE_BUILD_TYPE=Release
+	-DCMAKE_BUILD_TYPE=Release \
+	-DPython3_EXECUTABLE=/usr/bin/python3
 
 define CALAOS_REMOTE_UI_INSTALL_INIT_SYSV
 	$(INSTALL) -D -m 0755 $(CALAOS_REMOTE_UI_PKGDIR)/S99calaos \
@@ -30,7 +31,7 @@ define CALAOS_REMOTE_UI_INSTALL_INIT_SYSV
 endef
 
 define CALAOS_REMOTE_UI_INSTALL_TARGET_CMDS
-	$(INSTALL) -D -m 0755 $(@D)/build/calaos-remote-ui \
+	$(INSTALL) -D -m 0755 $(@D)/calaos-remote-ui \
 		$(TARGET_DIR)/usr/bin/calaos-remote-ui
 	$(CALAOS_REMOTE_UI_INSTALL_INIT_SYSV)
 endef
