@@ -1,0 +1,64 @@
+#!/bin/sh
+#
+# Load AIC8800DC WiFi+BT kernel modules
+#
+
+MODULES_DIR="/lib/modules/$(uname -r)"
+
+load_modules() {
+    # Crypto modules required by the WiFi stack
+    modprobe cfg80211
+    modprobe libarc4 2>/dev/null
+    modprobe ctr 2>/dev/null
+    modprobe ccm 2>/dev/null
+    modprobe libaes 2>/dev/null
+    modprobe aes_generic 2>/dev/null
+
+    # AIC8800DC BSP (SDIO transport)
+    modprobe aic8800_bsp
+    sleep 0.3
+
+    # AIC8800DC WLAN driver
+    modprobe aic8800_fdrv
+    sleep 2
+
+    # AIC8800DC Bluetooth Low-Power Management
+    modprobe aic8800_btlpm
+    sleep 0.1
+}
+
+unload_modules() {
+    ifdown wlan0 2>/dev/null
+    rmmod aic8800_btlpm 2>/dev/null
+    rmmod aic8800_fdrv 2>/dev/null
+    rmmod aic8800_bsp 2>/dev/null
+}
+
+case "$1" in
+    start)
+        printf "Loading AIC8800DC WiFi modules: "
+        load_modules
+        if [ -d /sys/class/net/wlan0 ]; then
+            echo "OK (wlan0 up)"
+            # Bring the interface up — starts wpa_supplicant & DHCP
+            # via /etc/network/interfaces
+            ifup wlan0 2>/dev/null &
+        else
+            echo "FAIL (wlan0 not found)"
+        fi
+        ;;
+    stop)
+        printf "Unloading AIC8800DC WiFi modules: "
+        unload_modules
+        echo "OK"
+        ;;
+    restart)
+        "$0" stop
+        sleep 1
+        "$0" start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac

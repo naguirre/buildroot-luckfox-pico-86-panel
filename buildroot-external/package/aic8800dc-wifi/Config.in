@@ -1,0 +1,10 @@
+config BR2_PACKAGE_AIC8800DC_WIFI
+	bool "aic8800dc-wifi"
+	depends on BR2_LINUX_KERNEL
+	help
+	  AIC8800DC WiFi + Bluetooth SDIO driver for the
+	  Luckfox Pico 86Panel W board.
+
+	  Builds three kernel modules (aic8800_bsp, aic8800_fdrv,
+	  aic8800_btlpm) and installs the firmware blobs to
+	  /lib/firmware/aic8800dc/.

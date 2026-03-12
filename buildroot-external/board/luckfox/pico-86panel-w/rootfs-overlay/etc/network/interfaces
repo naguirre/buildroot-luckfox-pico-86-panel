@@ -1,0 +1,13 @@
+# Loopback
+auto lo
+iface lo inet loopback
+
+# Wired Ethernet — DHCP
+auto eth0
+iface eth0 inet dhcp
+
+# WiFi — DHCP (brought up after S26wifi loads the driver)
+auto wlan0
+iface wlan0 inet dhcp
+    pre-up wpa_supplicant -B -i wlan0 -c /etc/wpa_supplicant.conf
+    post-down killall -q wpa_supplicant

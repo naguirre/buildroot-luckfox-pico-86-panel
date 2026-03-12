@@ -1,1 +1,2 @@
 source "$BR2_EXTERNAL_LUCKFOX_86PANEL_PATH/package/calaos-remote-ui/Config.in"
+source "$BR2_EXTERNAL_LUCKFOX_86PANEL_PATH/package/aic8800dc-wifi/Config.in"
