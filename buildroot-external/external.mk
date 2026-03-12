@@ -1,6 +1,6 @@
 include $(sort $(wildcard $(BR2_EXTERNAL_LUCKFOX_86PANEL_PATH)/package/*/*.mk))
 
-UBOOT_MAKE_OPTS += KCFLAGS="-Wno-error=address -Wno-error=maybe-uninitialized -Wno-error=enum-int-mismatch"
+UBOOT_MAKE_OPTS += KCFLAGS="-Wno-error=address -Wno-error=maybe-uninitialized -Wno-error=format-overflow"
 LINUX_CFLAGS += -Wno-dangling-pointer
 
 # Install RV1106-specific rkbin extras (blobs, INI files, host tools) that

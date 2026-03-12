@@ -56,7 +56,7 @@ echo "--- Packing Rockchip U-Boot loader images ---"
 # so we resolve it with a glob rather than hardcoding the name.
 UBOOT_BUILD_DIR="$(echo "${BUILD_DIR}"/uboot-*/ | awk '{print $1}')"
 UBOOT_BUILD_DIR="${UBOOT_BUILD_DIR%/}"
-INI_FILE="${RKBIN_DIR}/RKBOOT/RV1106MINIALL_EMMC_TB.ini"
+INI_FILE="${RKBIN_DIR}/RKBOOT/RV1106MINIALL.ini"
 
 # Repack the uboot.img FIT image from the freshly compiled U-Boot binaries.
 # Buildroot's standard `make` produces u-boot-nodtb.bin and u-boot.dtb but
